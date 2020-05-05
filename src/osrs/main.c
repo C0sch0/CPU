@@ -89,6 +89,7 @@ Node* get_node(int index, Queue* queue)
 		return node_;
 	}
 
+
 Process* remove_node_by_idx(int index, Queue* queue){
 	if (index == 0)
 	{
@@ -98,90 +99,61 @@ Process* remove_node_by_idx(int index, Queue* queue){
 			queue -> first = NULL;
 			queue -> last = NULL;
 		}
-		else {
+		else
+		{
 			Node* n = queue -> first;
 			queue -> first = queue -> first -> next_process;
 			free(n);
+		}
+		queue -> total_nodes -= 1;
+		return dequeued_process;
 	}
-	queue -> total_nodes -= 1;
-	return dequeued_process;
-	}
-	Node* parent = NULL;
-	Node* selected_node = queue -> first;
-	Node* child = selected_node -> next_process;
-	Process* dequeued_process;
-	int i = 0;
-	while(i < index){
-		parent = selected_node;
-		selected_node = child;
-		child =  child -> next_process;
-		i++;
-	}
-	if (!child){
-		parent -> next_process = NULL;
-		queue -> last = parent;
-	}
-	else{
-		parent -> next_process = selected_node -> next_process;
-	}
-	dequeued_process = selected_node -> process;
-	selected_node -> next_process = NULL;
-	free(selected_node);
-	queue -> total_nodes -= 1;
-	return dequeued_process;
-}
-
-
-Process *_pop(Queue *queue)
-{
-	Process* deleted = queue -> first -> process;
-	if (queue -> first == queue -> last){
-		free(queue -> first);
-		queue -> first = NULL;
-		queue -> last = NULL;
-	}
-	else {
-		Node* first = queue -> first;
-		queue -> first = queue -> first -> next_process;
-		free(first);
-	}
-	queue -> total_nodes -= 1;
-	return deleted;
-}
-
-
-int isQEmpty(Queue* queue){
-	if(queue -> last == NULL && queue -> first == NULL){
-		return 1;
-	}
-	else{
-		return 0;
+	else
+	{
+		Node* parent = NULL;
+		Node* selected_node = queue -> first;
+		Node* child = selected_node -> next_process;
+		Process* dequeued_process;
+		int i = 0;
+		while(i < index){
+			parent = selected_node;
+			selected_node = child;
+			child =  child -> next_process;
+			i++;
+		}
+		if (!child){
+			parent -> next_process = NULL;
+			queue -> last = parent;
+		}
+		else{
+			parent -> next_process = selected_node -> next_process;
+		}
+		dequeued_process = selected_node -> process;
+		selected_node -> next_process = NULL;
+		free(selected_node);
+		queue -> total_nodes -= 1;
+		return dequeued_process;
 	}
 }
 
-void set_next_node(Node* node, Node* new_node){
-	node -> next_process = new_node;
-}
 
 void _insert_node_in_queue(Process* process, Queue* queue){
 	Node* new_node = node_init(process);
-	if (isQEmpty(queue)){
+	if (queue -> last == NULL && queue -> first == NULL){
 		queue -> first = new_node;
 		queue -> last = new_node;
 	}
 	else{
-		set_next_node(queue -> last, new_node);
+		queue -> last -> next_process = new_node;
 		queue -> last = new_node;
 	}
 	queue -> total_nodes += 1;
 	// printf("Proceso %i ha entrado a la cola\n", process -> pid);
 }
 
-
-
 // End Functions
 // ############################################################################
-// Memory leak handlers
+// Memory handlers
 
 // End Memory handlers
 // ############################################################################
@@ -234,6 +206,7 @@ int main(int argc, char const *argv[]) {
     int init_time;
     int bursts_count;
     fscanf(input_file, "%s %d %d ", name, &init_time, &bursts_count);
+		printf("\n");
     printf("My name is: %s\n", name);
   	printf("My init time is: %d\n", init_time);
     printf("My bursts_count is: %d\n", bursts_count);
@@ -248,30 +221,27 @@ int main(int argc, char const *argv[]) {
 			fscanf(input_file, "%i", &burst_sequence[burst_index]);
 		}
 
-
-		printf("And my sequence is: \n");
-		for (int i = 0; i < total_bursts; i++) {
+		printf("My sequence is: \n");
+		for (int i = 0; i < total_bursts; i++)
+		{
 			if (i % 2 == 0)
 			{
-			  printf("CPU burst %d\n", burst_sequence[i]);
+			  printf("CPU: %d ", burst_sequence[i]);
 			}
-			else{
-			printf("I/O burst %d\n", burst_sequence[i]);
+			else
+			{
+				printf("I/O: %d ", burst_sequence[i]);
 		 	}
 		}
-
+		printf("\n");
 		Process* _process = new_process(process_n, name, init_time, bursts_count, burst_sequence);
 		all_processes[process_n] = _process;
-
   }
-
 
 	Queue* ready_queue = queue_init();
 	Queue* waiting_queue = queue_init();
 	Queue* finished_queue = queue_init();
-	//ready_queue -> total_nodes = 0;
-	//waiting_queue -> total_nodes = 0;
-	//finished_queue -> total_nodes = 0;
+
 	int simulation_complete = 0;
 	int simulation_time = 0;
 	Process* cpu = NULL;
@@ -284,7 +254,7 @@ int main(int argc, char const *argv[]) {
 			if (all_processes[process_i] -> start_time == simulation_time)
 			{
 				_insert_node_in_queue(all_processes[process_i], ready_queue);
-				printf("(t=%d) %s ha sido creado con estado READY\n", simulation_time, all_processes[process_i]-> name);
+				printf("(t = %d) %s ha sido creado con estado READY\n", simulation_time, all_processes[process_i]-> name);
 			}
 		}
 		// -----------------------------------------------------------------------
@@ -299,7 +269,7 @@ int main(int argc, char const *argv[]) {
 					strcpy(checking_node -> process -> current_state, "READY");
 					_insert_node_in_queue(checking_node -> process, ready_queue);
 					remove_node_by_idx(process_idx, waiting_queue);
-					printf("(t=%d) %s termino su I/O. Pasa de WAITING a READY)\n", simulation_time, checking_node -> process -> name);
+					printf("(t = %d) %s termino su I/O. Pasa de WAITING a READY)\n", simulation_time, checking_node -> process -> name);
 				}
 
 			}
@@ -308,7 +278,7 @@ int main(int argc, char const *argv[]) {
 		// CPU handling
 		if (!cpu)
 		{
-			if (!isQEmpty(ready_queue))
+			if (!(ready_queue -> last == NULL && ready_queue -> first == NULL))
 			{
 				// Shortest Time Remaining First
 				// We check who meets the criteria within the READY processes
@@ -419,12 +389,17 @@ int main(int argc, char const *argv[]) {
 
 		if (ready_queue -> total_nodes == 0 && waiting_queue -> total_nodes == 0 && finished_queue -> total_nodes == process_count) {
 			simulation_complete = 1;
-			printf("Simulación terminada. %i procesos - tiempo %i\n", finished_queue -> total_nodes, simulation_time - 1);
-			printf("A continuación, las estadísticas:\n");
 		}
-
-
 		simulation_time ++;
+	}
+	printf("--------------------END SIM--------------------\n");
+	printf("%i procesos EN tiempo %i\n", finished_queue -> total_nodes, simulation_time - 1);
+
+	for (int idx = 0; idx < finished_queue -> total_nodes; idx ++)
+	{
+		Node* checking_node = get_node(idx, finished_queue);
+		Process* process_ = checking_node -> process;
+		fprintf(output_file, "%s,%d,%d,%d,%d,%d\n", process_->name, process_->cpu_select, process_->interrumped, process_->response_time, process_->waiting_time);
 	}
 
   // fprintf(output_file, "%d, %d, SIGNAL\n", cells, iteracion_inicial - 1);
