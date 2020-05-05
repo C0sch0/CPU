@@ -321,7 +321,7 @@ int main(int argc, char const *argv[]) {
 		else
 		{
 			// CPU is handling a process. should we remove it?
-			if (strcmp(version, "np ")) {
+			if (strcmp(version, "np") == 0) {
 				//printf("Non-preemptive\n");
 				// Has the CPU process finished its burst ?
 				if (cpu -> burst_sequence[cpu -> burst_idx] == 0)
@@ -351,16 +351,7 @@ int main(int argc, char const *argv[]) {
 			}
 			else{
 				// Has it achieved quantum or finished ?
-				printf("preemptive\n");
-				if (cpu -> running_time == quantum) {
-					cpu -> interrumped += 1;
-					cpu -> running_time = 0;
-					strcpy(cpu -> current_state, "READY");
-					_insert_node_in_queue(cpu, ready_queue);
-					printf("(t = %i) %s alcanzo quantum. Pasa de RUNNING a READY)\n", simulation_time, cpu -> name);
-					cpu = NULL;
-				}
-
+				//printf("preemptive\n");
 				if (cpu -> burst_sequence[cpu -> burst_idx] == 0)
 				{
 					// The process is done with its current burst
@@ -374,19 +365,27 @@ int main(int argc, char const *argv[]) {
 						printf("(t = %i) %s finalizo \n", simulation_time, cpu -> name);
 						cpu = NULL;
 					}
-
 					else
-					{
-					// Current burst is over, yet not done, moving over to I/O WAITING
-					cpu -> interrumped += 1;
-					cpu -> burst_idx += 1;
-					cpu -> running_time = 0;
-					strcpy(cpu -> current_state, "WAITING");
-					_insert_node_in_queue(cpu, waiting_queue);
-					printf("(t = %i) %s termino CPU burst. Pasa a WAITING. \n", simulation_time, cpu -> name);
-					cpu = NULL;
+						{
+						// Current burst is over, yet not done, moving over to I/O WAITING
+						cpu -> interrumped += 1;
+						cpu -> burst_idx += 1;
+						cpu -> running_time = 0;
+						strcpy(cpu -> current_state, "WAITING");
+						_insert_node_in_queue(cpu, waiting_queue);
+						printf("(t = %i) %s termino CPU burst. Pasa a WAITING. \n", simulation_time, cpu -> name);
+						cpu = NULL;
 					}
 				}
+				else if (cpu -> running_time == quantum) {
+					cpu -> interrumped += 1;
+					cpu -> running_time = 0;
+					strcpy(cpu -> current_state, "READY");
+					_insert_node_in_queue(cpu, ready_queue);
+					printf("(t = %i) %s alcanzo quantum. Pasa de RUNNING a READY)\n", simulation_time, cpu -> name);
+					cpu = NULL;
+				}
+
 
 			}
 		}
@@ -414,6 +413,7 @@ int main(int argc, char const *argv[]) {
 		}
 		// Add time to CPU process
 		if (cpu) {
+			cpu -> running_time += 1;
 			cpu -> burst_sequence[cpu -> burst_idx] -= 1;
 		}
 
