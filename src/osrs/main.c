@@ -21,6 +21,7 @@ struct process{
 	int running_time;
 	int interrumped;
 	int moved_to_waiting;
+	int just_created;
 	int total_remaining_time;
 	int cpu_select;
   int response_time;
@@ -72,6 +73,7 @@ Process* new_process(int pid, char* name, int created_time, int bursts_count, in
 	process -> bursts_count = bursts_count;
 	process -> burst_idx = 0;
 	process -> moved_to_waiting = 0;
+	process -> just_created = 0;
 	process -> total_remaining_time = total_remaining_time;
 	process -> burst_sequence = burst_sequence;
 	strcpy(process -> current_state, "NULL");
@@ -350,6 +352,7 @@ int main(int argc, char const *argv[])
 		{
 			if (all_processes[process_i] -> created_time == simulation_time)
 			{
+				all_processes[process_i] -> just_created = 1;
 				_insert_node_in_queue(all_processes[process_i], ready_queue);
 				printf("(t = %d) %s ha sido creado con estado READY\n", simulation_time, all_processes[process_i]-> name);
 			}
@@ -481,6 +484,22 @@ int main(int argc, char const *argv[])
 			}
 		}
 
+		// Add time to ready queue
+		if (ready_queue -> total_nodes > 0)
+		{
+			for(int process_id = 0; process_id < ready_queue -> total_nodes; process_id++)
+			{
+				Node* checking_node = get_node(process_id, ready_queue);
+				if (checking_node -> process -> just_created == 1) {
+					checking_node -> process -> just_created = 0;
+				}
+				else
+				{
+					checking_node -> process -> waiting_time += 1;
+				}
+
+			}
+		}
 
 
 		if (!cpu)
@@ -499,16 +518,6 @@ int main(int argc, char const *argv[])
 				cpu -> cpu_select += 1;
 
 				printf("response time: %i / waiting time: %i\n", cpu->response_time, cpu->waiting_time);
-			}
-		}
-
-		// Add time to ready queue
-		if (ready_queue -> total_nodes > 0)
-		{
-			for(int process_id = 0; process_id < ready_queue -> total_nodes; process_id++)
-			{
-				Node* checking_node = get_node(process_id, ready_queue);
-				checking_node -> process -> waiting_time += 1;
 			}
 		}
 
