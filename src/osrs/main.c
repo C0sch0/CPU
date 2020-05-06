@@ -11,6 +11,7 @@
 struct process{
 	int pid;
 	char name[33];
+	int created_time;
 	int start_time;
 	char current_state[10];
 	int bursts_count; // Total bursts
@@ -62,11 +63,13 @@ Queue* queue_init(){
 	return new_queue;
 }
 
-Process* new_process(int pid, char* name, int start_time, int bursts_count, int* burst_sequence, int total_remaining_time){
+Process* new_process(int pid, char* name, int created_time, int bursts_count, int* burst_sequence, int total_remaining_time){
 	Process* process = malloc(sizeof(Process));
 	strcpy(process -> name, name);
-	process -> start_time = start_time;
+	process -> created_time = created_time;
+	process -> start_time = -1;
 	process -> bursts_count = bursts_count;
+	process -> burst_idx = 0;
 	process -> total_remaining_time = total_remaining_time;
 	process -> burst_sequence = burst_sequence;
 	strcpy(process -> current_state, "NULL");
@@ -155,18 +158,12 @@ int minimun_in_array(int array[], int lenght)
 
 Process* shortest_remaining_time(Queue* queue)
 	{
-		//if (queue -> total_nodes == 1)
-		//{
-		//	Process* selected_process = remove_node_by_idx(0, queue)
-		//	return selected_process
-		//
-		//else
-		//{
 		int array_total_remainings[queue -> total_nodes];
 		for (int idx = 0; idx < queue -> total_nodes; idx++)
 		{
 			Node* checking_node = get_node(idx, queue);
 			array_total_remainings[idx] = checking_node -> process -> total_remaining_time;
+			printf("%s has total remaining of : %i\n", checking_node -> process -> name,checking_node -> process -> total_remaining_time);
 		}
 		// Min value in the array
 		int min_remaining_time;
@@ -246,7 +243,8 @@ void _insert_node_in_queue(Process* process, Queue* queue){
 int quantum;
 int length;
 
-int main(int argc, char const *argv[]) {
+int main(int argc, char const *argv[])
+{
   if (argc < 4 || argc > 5)
   {
     printf("Modo de uso: ./osrs <input_file> <output_file> <version> [<quantum>]\n");
@@ -289,7 +287,7 @@ int main(int argc, char const *argv[]) {
     char name[33];
     int init_time;
     int bursts_count;
-    fscanf(input_file, "%s %d %d ", name, &init_time, &bursts_count);
+    fscanf(input_file, "%s %d %d", name, &init_time, &bursts_count);
 		printf("\n");
     printf("My name is: %s\n", name);
   	printf("My init time is: %d\n", init_time);
@@ -308,7 +306,8 @@ int main(int argc, char const *argv[]) {
 		printf("My sequence is: \n");
 		for (int i = 0; i < total_bursts; i++)
 		{
-			if (i % 2 == 0)
+			int idx = i % 2;
+			if (idx == 0)
 			{
 				total_remaining_time += burst_sequence[i];
 			  printf("CPU: %d ", burst_sequence[i]);
@@ -332,11 +331,13 @@ int main(int argc, char const *argv[]) {
 	Process* cpu = NULL;
 	printf("--------------------INIT SIM--------------------\n");
 
-	while (!simulation_complete) {
+	while (!simulation_complete)
+	{
 		// -----------------------------------------------------------------------
-		// CHECK PROCESS CREATION BY START_TIME
-		for (int process_i = 0; process_i < process_count; process_i++) {
-			if (all_processes[process_i] -> start_time == simulation_time)
+		// CHECK PROCESS CREATION BY created_time
+		for (int process_i = 0; process_i < process_count; process_i++)
+		{
+			if (all_processes[process_i] -> created_time == simulation_time)
 			{
 				_insert_node_in_queue(all_processes[process_i], ready_queue);
 				printf("(t = %d) %s ha sido creado con estado READY\n", simulation_time, all_processes[process_i]-> name);
@@ -344,7 +345,8 @@ int main(int argc, char const *argv[]) {
 		}
 		// -----------------------------------------------------------------------
 		// Check if any process is done with WAITING
-		if (waiting_queue -> total_nodes > 0) {
+		if (waiting_queue -> total_nodes > 0)
+		{
 			for(int process_idx = 0; process_idx < waiting_queue -> total_nodes; process_idx++)
 			{
 				Node* checking_node = get_node(process_idx, waiting_queue);
@@ -355,26 +357,28 @@ int main(int argc, char const *argv[]) {
 					_insert_node_in_queue(checking_node -> process, ready_queue);
 					remove_node_by_idx(process_idx, waiting_queue);
 					printf("(t = %d) %s termino su I/O. Pasa de WAITING a READY)\n", simulation_time, checking_node -> process -> name);
+					printf("Su waiting time actual: %i\n", checking_node -> process -> waiting_time);
+
 				}
 			}
 		}
+
+		if (cpu)
+		{
+			cpu -> running_time += 1;
+			cpu -> burst_sequence[cpu -> burst_idx] -= 1;
+			cpu -> total_remaining_time -= 1;
+			printf("(t= %d) %s is running, with %d left\n", simulation_time, cpu -> name, cpu -> burst_sequence[cpu -> burst_idx]);
+		}
+
 		// -----------------------------------------------------------------------
 		// CPU handling
-		if (!cpu)
-		{
-			if (!(ready_queue -> last == NULL && ready_queue -> first == NULL))
-			{
-				// Shortest Time Remaining First
-				// We check who meets the criteria within the READY processes
-				cpu = shortest_remaining_time(ready_queue);
-				printf("(t = %i) %s ingresa a CPU\n", simulation_time, cpu -> name);
-				cpu -> cpu_select += 1;
-			}
-		}
-		else
+
+		if (cpu)
 		{
 			// CPU is handling a process. should we remove it?
-			if (strcmp(version, "np") == 0) {
+			if (strcmp(version, "np") == 0)
+			{
 				//printf("Non-preemptive\n");
 				// Has the CPU process finished its burst ?
 				if (cpu -> burst_sequence[cpu -> burst_idx] == 0)
@@ -385,6 +389,9 @@ int main(int argc, char const *argv[]) {
 					{
 						cpu -> finished = simulation_time;
 						strcpy(cpu -> current_state, "FINISHED");
+						cpu -> turnaround = cpu -> finished;
+						cpu -> turnaround -= cpu -> start_time;
+						printf("%s finished at %d and started on %d\n",cpu ->name, cpu -> finished, cpu -> start_time );
 						_insert_node_in_queue(cpu, finished_queue);
 						printf("(t = %i) %s finalizo. Pasa de READY a FINISHED.\n", simulation_time, cpu -> name);
 						cpu = NULL;
@@ -392,17 +399,18 @@ int main(int argc, char const *argv[]) {
 					else
 					{
 						// Current CPU burst is over, yet not done. moving to WAITING
-						cpu -> interrumped += 1;
+						//cpu -> interrumped += 1;
 						cpu -> burst_idx += 1;
-						cpu -> running_time = 0;
 						strcpy(cpu -> current_state, "WAITING");
 						_insert_node_in_queue(cpu, waiting_queue);
 						printf("(t = %i) %s termino CPU burst. Pasa a WAITING. \n", simulation_time, cpu -> name);
+						printf("running time %i\n", cpu -> running_time);
 						cpu = NULL;
 					}
 				}
 			}
-			else{
+			else
+			{
 				// Has it achieved quantum or finished ?
 				//printf("preemptive\n");
 				if (cpu -> burst_sequence[cpu -> burst_idx] == 0)
@@ -430,7 +438,8 @@ int main(int argc, char const *argv[]) {
 						cpu = NULL;
 					}
 				}
-				else if (cpu -> running_time == quantum) {
+				else if (cpu -> running_time == quantum)
+				{
 					cpu -> interrumped += 1;
 					cpu -> running_time = 0;
 					strcpy(cpu -> current_state, "READY");
@@ -438,10 +447,32 @@ int main(int argc, char const *argv[]) {
 					printf("(t = %i) %s alcanzo quantum. Pasa de RUNNING a READY)\n", simulation_time, cpu -> name);
 					cpu = NULL;
 				}
-
-
 			}
 		}
+
+		if (!cpu)
+		{
+			if (!(ready_queue -> last == NULL && ready_queue -> first == NULL))
+			{
+				// Shortest Time Remaining First
+				// We check who meets the criteria within the READY processes
+				cpu = shortest_remaining_time(ready_queue);
+				printf("(t = %i) %s ingresa a CPU\n", simulation_time, cpu -> name);
+				if (cpu -> start_time == -1) {
+					cpu -> start_time = simulation_time;
+					cpu -> response_time = cpu -> start_time;
+					cpu -> response_time -= cpu -> created_time;
+				}
+				cpu -> cpu_select += 1;
+
+				printf("response time: %i / waiting time: %i\n", cpu->response_time, cpu->waiting_time);
+			}
+		}
+
+
+
+
+
 
 		// What is time ?
 		// Add time to waiting queue
@@ -465,19 +496,19 @@ int main(int argc, char const *argv[]) {
 			}
 		}
 		// Add time to CPU process
-		if (cpu) {
-			cpu -> running_time += 1;
-			cpu -> burst_sequence[cpu -> burst_idx] -= 1;
-			cpu -> total_remaining_time -= 1;
-		}
 
-		if (ready_queue -> total_nodes == 0 && waiting_queue -> total_nodes == 0 && finished_queue -> total_nodes == process_count) {
+
+		// Are we done ?
+		if (ready_queue -> total_nodes == 0 && waiting_queue -> total_nodes == 0 && finished_queue -> total_nodes == process_count)
+		{
 			simulation_complete = 1;
 		}
+
 		simulation_time ++;
 	}
+
 	printf("--------------------END SIM--------------------\n");
-	printf("%i procesos EN tiempo %i\n", finished_queue -> total_nodes, simulation_time - 1);
+	printf("%i procesos en tiempo %i\n", finished_queue -> total_nodes, simulation_time - 1);
 
 	for (int idx = 0; idx < finished_queue -> total_nodes; idx ++)
 	{
