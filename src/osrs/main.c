@@ -195,7 +195,7 @@ Process* shortest_remaining_time(Queue* queue)
 				}
 			}
 		}
-		else
+		if (repeated > 1)
 		{
 			// Tie between processes, we must choose by current CPU burst
 			int tie_breaker[repeated];
@@ -224,8 +224,19 @@ Process* shortest_remaining_time(Queue* queue)
 				}
 			}
 		}
+		if (repeated == 0) {
+			printf("Weird\n" );
+		}
 	}
 
+void print_queue(Queue* queue) {
+	for (int i = 0; i < queue -> total_nodes; i++) {
+		Node* checking_node = get_node(i, queue);
+		printf("name %s \n current burst: %i  start time: %i \n", checking_node->process->name,
+		checking_node->process->burst_sequence[checking_node->process->burst_idx],
+		checking_node->process->start_time);
+	}
+}
 
 void _insert_node_in_queue(Process* process, Queue* queue){
 	Node* new_node = node_init(process);
@@ -285,10 +296,20 @@ int main(int argc, char const *argv[])
 	// ############################################################################
 	// Process creation
   int process_count;
-	char version[3];
-	strcpy(version, argv[3]);
+	int version;
+	if (strcmp(argv[3], "np") == 0) {
+		version = 0;
+	}
+	else if (strcmp(argv[3], "p") == 1) {
+		version = 1;
+	}
+	else
+	{
+		printf("¡Version incorrecta! (%s)\n", argv[3]);
+    return 2;
+	}
   fscanf(input_file, "%d", &process_count);
-  printf("version: %s,  quantum: %d \n", version, quantum);
+  printf("version: %d,  quantum: %d \n", version, quantum);
   printf("Number of processes = %d \n", process_count);
 
   // Read every line, create all processes with burst information
@@ -384,7 +405,7 @@ int main(int argc, char const *argv[])
 			for(int process_idx = 0; process_idx < waiting_queue -> total_nodes; process_idx++)
 			{
 				Node* checking_node = get_node(process_idx, waiting_queue);
-				if (checking_node -> process-> burst_sequence[checking_node -> process -> burst_idx] == 0)
+				if (checking_node -> process-> burst_sequence[checking_node -> process -> burst_idx] <= 0)
 				{
 					checking_node -> process -> burst_idx += 1;
 					strcpy(checking_node -> process -> current_state, "READY");
@@ -411,11 +432,11 @@ int main(int argc, char const *argv[])
 		if (cpu)
 		{
 			// CPU is handling a process. should we remove it?
-			if (strcmp(version, "np") == 0)
+			if (version == 0)
 			{
 				//printf("Non-preemptive\n");
 				// Has the CPU process finished its burst ?
-				if (cpu -> burst_sequence[cpu -> burst_idx] == 0)
+				if (cpu -> burst_sequence[cpu -> burst_idx] <= 0)
 				{
 					// The process is done with its current burst
 					// Is it the last burst though?
@@ -504,8 +525,9 @@ int main(int argc, char const *argv[])
 
 		if (!cpu)
 		{
-			if (!(ready_queue -> last == NULL && ready_queue -> first == NULL))
+			if (ready_queue -> total_nodes > 0)
 			{
+
 				// Shortest Time Remaining First
 				// We check who meets the criteria within the READY processes
 				cpu = shortest_remaining_time(ready_queue);
@@ -536,6 +558,16 @@ int main(int argc, char const *argv[])
 
 
 		simulation_time ++;
+		printf("time: %i\n", simulation_time);
+		printf("ready: %i   waiting: %i    finished: %i  ready: %i\n", ready_queue ->total_nodes, waiting_queue ->total_nodes, finished_queue ->total_nodes,  process_count);
+		//printf("%i\n", );
+		if (waiting_queue -> total_nodes > 0) {
+			for (int i = 0; i < waiting_queue -> total_nodes; i++) {
+				Node* checking_node = get_node(i, waiting_queue);
+				printf("name %s current burst: %i  start time: %i \n", checking_node->process->name,checking_node->process->burst_sequence[checking_node->process->burst_idx],checking_node->process->start_time);
+			}
+		}
+
 	}
 
 
